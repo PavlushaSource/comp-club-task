@@ -3,4 +3,10 @@
 
 .PHONY: build
 build:
-	go build -o comp-club ./cmd/app
+	go build -o task ./cmd/app
+
+fmt:
+	@golangci-lint run ./...
+
+clear:
+	@rm task

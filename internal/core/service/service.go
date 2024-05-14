@@ -13,9 +13,16 @@ import (
 func StartClub(info *entity.ClubInfo, events []string) error {
 	clients := make(map[string]entity.Client)
 	tables := make([]entity.Table, info.NumberTables+1)
+
+	tables[0] = entity.Table{
+		IsUsing: true,
+	}
+
 	q := make([]string, 0)
 
 	fmt.Printf("%s\n", info.OpenTime.Format("15:04"))
+
+	prevTime := info.OpenTime
 
 	for _, event := range events {
 
@@ -29,6 +36,12 @@ func StartClub(info *entity.ClubInfo, events []string) error {
 		if err != nil {
 			return fmt.Errorf("error parse event: %w", err)
 		}
+
+		if !prevTime.Before(inputEvent.Time) && !prevTime.Equal(inputEvent.Time) && len(clients) > 0 {
+			return fmt.Errorf("events must be sorted by time")
+		}
+		prevTime = inputEvent.Time
+
 		switch inputEvent.ID {
 		case entity.ClientCome:
 			if _, exist := clients[inputEvent.ClientName]; exist {
@@ -158,11 +171,14 @@ func StartClub(info *entity.ClubInfo, events []string) error {
 }
 
 func EventInWorkingTime(open, close, eventTime time.Time) bool {
-	if open.After(close) {
-		return !(eventTime.After(eventTime) && eventTime.Before(open))
-	} else {
-		return eventTime.After(open) && eventTime.Before(close)
+	if open.Before(close) {
+		return !eventTime.Before(open) && !eventTime.After(close)
 	}
+	if open.Equal(close) {
+		return eventTime.Equal(open)
+	}
+
+	return !open.After(eventTime) && !close.Before(eventTime)
 }
 
 func CalculateProfit(pricePerHour int, seatingTime time.Duration) int {
