@@ -12,16 +12,16 @@ import (
 func ParseEvent(data string, info *entity.ClubInfo) (*entity.Event, error) {
 	dataSplit := strings.Split(data, " ")
 	if len(dataSplit) < 3 {
-		return nil, fmt.Errorf("failed parse event, length must be 3 or larger")
+		return nil, fmt.Errorf("failed parse event, length must be 3 or larger, got %d", len(data))
 	}
 	timeEvent, err := time.Parse("15:04", dataSplit[0])
 	if err != nil {
-		return nil, fmt.Errorf("failed parse time event: %w", err)
+		return nil, fmt.Errorf("failed parse time event: %s", dataSplit[0])
 	}
 
 	eventID, err := strconv.Atoi(dataSplit[1])
 	if err != nil {
-		return nil, fmt.Errorf("failed parse event id: %w", err)
+		return nil, fmt.Errorf("failed parse event id: %s", dataSplit[1])
 	}
 
 	IsCorrectClientName := regexp.MustCompile(`^[a-z0-9_-]+$`).MatchString
@@ -78,10 +78,10 @@ func ParseHeaderCompClub(data []string) (*entity.ClubInfo, error) {
 func parseNumberTables(data string, info *entity.ClubInfo) error {
 	countTables, err := strconv.Atoi(data)
 	if err != nil {
-		return fmt.Errorf("error convert to int: %w", err)
+		return fmt.Errorf("error convert to int: %s", data)
 	}
 	if countTables <= 0 {
-		return fmt.Errorf("the number must be positive")
+		return fmt.Errorf("the number must be positive, got %d", countTables)
 	}
 
 	info.NumberTables = countTables
@@ -91,15 +91,15 @@ func parseNumberTables(data string, info *entity.ClubInfo) error {
 func parseOpeningHours(data string, info *entity.ClubInfo) error {
 	clubTime := strings.Split(data, " ")
 	if len(clubTime) != 2 {
-		return fmt.Errorf("failed parse opening hours. Format must be <15:04 20:04>")
+		return fmt.Errorf("failed parse opening hours. \nFormat must be <15:04 20:04>, got %s", data)
 	}
 	openTime, err := time.Parse("15:04", clubTime[0])
 	if err != nil {
-		return fmt.Errorf("failed parse opening time: %w", err)
+		return fmt.Errorf("failed parse opening time: %s", clubTime[0])
 	}
 	closeTime, err := time.Parse("15:04", clubTime[1])
 	if err != nil {
-		return fmt.Errorf("failed parse closing time: %w", err)
+		return fmt.Errorf("failed parse closing time: %s", clubTime[1])
 	}
 	info.OpenTime = openTime
 	info.CloseTime = closeTime
@@ -110,10 +110,10 @@ func parseOpeningHours(data string, info *entity.ClubInfo) error {
 func parseTablePrice(data string, info *entity.ClubInfo) error {
 	pricePerHour, err := strconv.Atoi(data)
 	if err != nil {
-		return fmt.Errorf("error convert to int: %w", err)
+		return fmt.Errorf("error convert to int: %s", data)
 	}
 	if pricePerHour <= 0 {
-		return fmt.Errorf("the price must be positive")
+		return fmt.Errorf("the price must be positive, got %d", pricePerHour)
 	}
 
 	info.PriceHour = pricePerHour
