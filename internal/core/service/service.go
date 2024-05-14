@@ -3,7 +3,8 @@ package service
 import (
 	"fmt"
 	"github.com/PavlushaSource/comp-club-task/internal/core/entity"
-	"github.com/PavlushaSource/comp-club-task/internal/utils"
+	"github.com/PavlushaSource/comp-club-task/internal/core/utils"
+	"github.com/PavlushaSource/comp-club-task/internal/lib/parser"
 	"log"
 	"slices"
 	"sort"
@@ -30,12 +31,17 @@ func StartClub(info *entity.ClubInfo, events []string) error {
 			continue
 		}
 
-		fmt.Printf("%s\n", event)
-
-		inputEvent, err := utils.ParseEvent(event)
+		inputEvent, err := parser.ParseEvent(event, info)
 		if err != nil {
 			return fmt.Errorf("error parse event: %w", err)
 		}
+
+		if !utils.EventInWorkingTime(info.OpenTime, info.CloseTime, inputEvent.Time) && len(clients) > 0 {
+			break
+		} else if info.OpenTime.After(inputEvent.Time) {
+			inputEvent.Time = inputEvent.Time.Add(24 * time.Hour)
+		}
+		fmt.Printf("%s\n", event)
 
 		if !prevTime.Before(inputEvent.Time) && !prevTime.Equal(inputEvent.Time) && len(clients) > 0 {
 			return fmt.Errorf("events must be sorted by time")
@@ -49,7 +55,7 @@ func StartClub(info *entity.ClubInfo, events []string) error {
 					entity.EventFailed, "YouShallNotPass")
 				break
 
-			} else if !EventInWorkingTime(info.OpenTime, info.CloseTime, inputEvent.Time) {
+			} else if !utils.EventInWorkingTime(info.OpenTime, info.CloseTime, inputEvent.Time) {
 				fmt.Printf("%s %d %s\n", inputEvent.Time.Format("15:04"),
 					entity.EventFailed, "NotOpenYet")
 				break
@@ -74,7 +80,7 @@ func StartClub(info *entity.ClubInfo, events []string) error {
 
 				tables[client.Table].IsUsing = false
 				tables[client.Table].UsedTime = tables[client.Table].UsedTime.Add(periodSeat)
-				tables[client.Table].Profit += CalculateProfit(info.PriceHour, periodSeat)
+				tables[client.Table].Profit += utils.CalculateProfit(info.PriceHour, periodSeat)
 			}
 
 			clients[inputEvent.ClientName] = entity.Client{
@@ -115,7 +121,7 @@ func StartClub(info *entity.ClubInfo, events []string) error {
 				periodSeat := inputEvent.Time.Sub(client.SeatTime)
 
 				tables[client.Table].UsedTime = tables[client.Table].UsedTime.Add(periodSeat)
-				tables[client.Table].Profit += CalculateProfit(info.PriceHour, periodSeat)
+				tables[client.Table].Profit += utils.CalculateProfit(info.PriceHour, periodSeat)
 			}
 
 			delete(clients, inputEvent.ClientName)
@@ -158,34 +164,15 @@ func StartClub(info *entity.ClubInfo, events []string) error {
 		client := clients[name]
 		periodSeat := info.CloseTime.Sub(client.SeatTime)
 		tables[client.Table].UsedTime = tables[client.Table].UsedTime.Add(periodSeat)
-		tables[client.Table].Profit += CalculateProfit(info.PriceHour, periodSeat)
+		tables[client.Table].Profit += utils.CalculateProfit(info.PriceHour, periodSeat)
 		tables[client.Table].IsUsing = false
 
 		delete(clients, name)
 	}
 
+	fmt.Printf("%v\n", info.CloseTime.Format("15:04"))
 	for i, t := range tables[1:] {
 		fmt.Printf("%d %d %v\n", i+1, t.Profit, t.UsedTime.Format("15:04"))
 	}
 	return nil
-}
-
-func EventInWorkingTime(open, close, eventTime time.Time) bool {
-	if open.Before(close) {
-		return !eventTime.Before(open) && !eventTime.After(close)
-	}
-	if open.Equal(close) {
-		return eventTime.Equal(open)
-	}
-
-	return !open.After(eventTime) && !close.Before(eventTime)
-}
-
-func CalculateProfit(pricePerHour int, seatingTime time.Duration) int {
-	inMinutes := int(seatingTime.Minutes())
-	s := inMinutes / 60 * pricePerHour
-	if inMinutes%60 > 0 {
-		s += pricePerHour
-	}
-	return s
 }
